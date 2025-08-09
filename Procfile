@@ -1,2 +1,2 @@
-web: python3 bot_keepalive.py
+web: python3 bot_webhook.py
 
