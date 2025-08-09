@@ -1,2 +1,2 @@
-worker: python3 bot_complete.py
+worker: python3 bot_render.py
 
