@@ -95,7 +95,7 @@ Desenvolvido com ❤️ pela equipe NexoCrypto"""
             
             # Salva dados do usuário no backend
             user_data = {
-                'uuid': uuid_code,
+                'user_uuid': uuid_code,  # Campo correto para o backend
                 'telegram_id': user.id,
                 'username': user.username or '',
                 'first_name': user.first_name or '',
@@ -105,7 +105,7 @@ Desenvolvido com ❤️ pela equipe NexoCrypto"""
             # Envia dados para o backend
             try:
                 response = requests.post(
-                    f"{BACKEND_URL}/api/telegram/validate",
+                    f"{BACKEND_URL}/verify-userbot-code",
                     json=user_data,
                     timeout=10
                 )
