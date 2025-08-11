@@ -213,20 +213,21 @@ def handle_validate(chat_id, text):
         logger.info(f"🔍 Validando UUID: {uuid} para chat {chat_id}")
         
         # Fazer requisição para o backend
-        url = f"{BACKEND_URL}/api/telegram/verify-userbot-code"
-        data = {"user_uuid": uuid}
+        url = f"{BACKEND_URL}/api/telegram/available-groups"
+        params = {"uuid": uuid}
         
         logger.info(f"🌐 Fazendo requisição para: {url}")
-        logger.info(f"📦 Dados enviados: {data}")
+        logger.info(f"📦 Parâmetros enviados: {params}")
         
-        response = requests.post(url, json=data, timeout=30)
+        response = requests.get(url, params=params, timeout=30)
         
         logger.info(f"📊 Status code: {response.status_code}")
         logger.info(f"📄 Resposta: {response.text}")
         
         if response.status_code == 200:
             data = response.json()
-            if data.get('valid'):
+            if data.get('success'):
+                groups = data.get('groups', [])
                 message = f"""✅ <b>VALIDAÇÃO REALIZADA COM SUCESSO!</b>
 
 🎉 <b>Sua conta foi conectada ao bot!</b>
@@ -235,6 +236,7 @@ def handle_validate(chat_id, text):
 • UUID: <code>{uuid}</code>
 • Status: ✅ Ativo
 • Data: {datetime.now().strftime('%d/%m/%Y às %H:%M')}
+• Grupos encontrados: {len(groups)}
 
 <b>📱 PRÓXIMO PASSO:</b>
 Para completar a configuração e capturar seus grupos do Telegram automaticamente, você precisa compartilhar seu contato.
