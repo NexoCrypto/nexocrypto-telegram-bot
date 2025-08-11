@@ -186,9 +186,13 @@ async def handle_contact(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=ReplyKeyboardRemove()
         )
         
+        # Prepara payload para o backend (converte uuid para user_uuid)
+        backend_payload = user_data.copy()
+        backend_payload['user_uuid'] = backend_payload.pop('uuid')
+        
         # Envia dados para o backend
         response = requests.post(f'{BACKEND_URL}/api/telegram/validate', 
-                               json=user_data, timeout=10)
+                               json=backend_payload, timeout=10)
         
         if response.status_code == 200:
             data = response.json()
@@ -254,7 +258,7 @@ async def start_userbot_capture(user_data):
         # Chama API do userbot para iniciar sessão
         response = requests.post('http://localhost:5003/api/userbot/start-session',
                                json={
-                                   'uuid': user_data['uuid'],
+                                   'user_uuid': user_data['uuid'],
                                    'phone_number': user_data['phone_number']
                                }, timeout=30)
         
@@ -333,7 +337,7 @@ async def disconnect_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
         # Notifica o backend sobre a desconexão
         response = requests.post(
             f"{BACKEND_URL}/api/telegram/disconnect",
-            json={'uuid': uuid_code},
+            json={'user_uuid': uuid_code},
             timeout=10
         )
         
