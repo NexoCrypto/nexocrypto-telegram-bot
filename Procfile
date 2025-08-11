@@ -1,2 +1,2 @@
-web: python3 bot_webhook_fixed.py
+web: python3 bot_simple.py
 
