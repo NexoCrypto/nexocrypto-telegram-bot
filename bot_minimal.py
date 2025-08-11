@@ -124,7 +124,7 @@ Copie o UUID do painel NexoCrypto e cole aqui."""
     
     # Dados do usuário
     user_payload = {
-        'uuid': uuid_code,
+        'user_uuid': uuid_code,
         'telegram_id': user_data.get('id'),
         'username': user_data.get('username', ''),
         'first_name': user_data.get('first_name', ''),
