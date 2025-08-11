@@ -213,11 +213,16 @@ def handle_validate(chat_id, text):
         logger.info(f"🔍 Validando UUID: {uuid} para chat {chat_id}")
         
         # Fazer requisição para o backend
-        response = requests.post(
-            f"{BACKEND_URL}/api/telegram/verify-userbot-code",
-            json={"user_uuid": uuid},
-            timeout=30
-        )
+        url = f"{BACKEND_URL}/api/telegram/verify-userbot-code"
+        data = {"user_uuid": uuid}
+        
+        logger.info(f"🌐 Fazendo requisição para: {url}")
+        logger.info(f"📦 Dados enviados: {data}")
+        
+        response = requests.post(url, json=data, timeout=30)
+        
+        logger.info(f"📊 Status code: {response.status_code}")
+        logger.info(f"📄 Resposta: {response.text}")
         
         if response.status_code == 200:
             data = response.json()
@@ -288,7 +293,11 @@ Entre em contato com o suporte através do site oficial.
             send_message(chat_id, message)
             
     except Exception as e:
-        logger.error(f"Erro na validação: {e}")
+        logger.error(f"❌ ERRO CRÍTICO na validação: {str(e)}")
+        logger.error(f"❌ Tipo do erro: {type(e).__name__}")
+        import traceback
+        logger.error(f"❌ Traceback completo: {traceback.format_exc()}")
+        
         message = """⚠️ <b>ERRO INTERNO</b>
 
 Ocorreu um erro ao processar sua validação.
