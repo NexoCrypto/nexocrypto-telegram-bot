@@ -213,13 +213,10 @@ def handle_validate(chat_id, text):
         logger.info(f"🔍 Validando UUID: {uuid} para chat {chat_id}")
         
         # Fazer requisição para o backend
-        url = f"{BACKEND_URL}/api/telegram/available-groups"
-        params = {"uuid": uuid}
-        
+        url = f"{BACKEND_URL}/api/telegram/available-groups/{uuid}"
         logger.info(f"🌐 Fazendo requisição para: {url}")
-        logger.info(f"📦 Parâmetros enviados: {params}")
         
-        response = requests.get(url, params=params, timeout=30)
+        response = requests.get(url, timeout=30)
         
         logger.info(f"📊 Status code: {response.status_code}")
         logger.info(f"📄 Resposta: {response.text}")
