@@ -78,7 +78,7 @@ def send_message(chat_id, text, parse_mode='HTML'):
             'text': text,
             'parse_mode': parse_mode
         }
-        response = requests.post(url, json=data, timeout=10)
+        response = requests.post(url, json=data, timeout=30)
         return response.json()
     except Exception as e:
         logger.error(f"Erro ao enviar mensagem: {e}")
@@ -216,7 +216,7 @@ def handle_validate(chat_id, text):
         response = requests.post(
             f"{BACKEND_URL}/verify-userbot-code",
             json={"user_uuid": uuid},
-            timeout=10
+            timeout=30
         )
         
         if response.status_code == 200:
@@ -317,7 +317,7 @@ def handle_contact(chat_id, contact):
                 "phone_number": phone_number,
                 "telegram_chat_id": str(chat_id)
             },
-            timeout=10
+            timeout=30
         )
         
         if response.status_code == 200:
@@ -660,7 +660,7 @@ if __name__ == '__main__':
         response = requests.post(
             f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook",
             json={'url': webhook_url},
-            timeout=10
+            timeout=30
         )
         
         if response.status_code == 200:
