@@ -214,7 +214,7 @@ def handle_validate(chat_id, text):
         
         # Fazer requisição para o backend
         response = requests.post(
-            f"{BACKEND_URL}/verify-userbot-code",
+            f"{BACKEND_URL}/api/telegram/verify-userbot-code",
             json={"user_uuid": uuid},
             timeout=30
         )
@@ -311,7 +311,7 @@ def handle_contact(chat_id, contact):
         
         # Fazer requisição para iniciar captura
         response = requests.post(
-            f"{BACKEND_URL}/start-userbot-capture",
+            f"{BACKEND_URL}/api/telegram/start-userbot-session",
             json={
                 "user_uuid": "temp_uuid",  # Seria obtido do contexto
                 "phone_number": phone_number,
