@@ -114,7 +114,7 @@ Desenvolvido com ❤️ pela equipe NexoCrypto"""
             
             # Salva dados do usuário no backend
             user_data = {
-                'uuid': uuid_code,
+                'user_uuid': uuid_code,  # Corrigido para user_uuid
                 'telegram_id': user.id,
                 'username': user.username or '',
                 'first_name': user.first_name or '',
