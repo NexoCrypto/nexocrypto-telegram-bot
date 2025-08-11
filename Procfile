@@ -1,2 +1,2 @@
-web: python3 bot_complete.py
+web: python3 bot_webhook.py
 
