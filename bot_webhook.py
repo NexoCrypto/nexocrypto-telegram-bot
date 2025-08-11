@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
 """
-NexoCrypto Telegram Bot - Versão Webhook para Render
-Otimizado para plano gratuito com webhook em vez de polling
+NexoCrypto Trading Bot - Versão Simplificada
+Bot Telegram para validação de usuários do sistema NexoCrypto
 """
 
 import os
 import logging
 import requests
 from flask import Flask, request, jsonify
-from telegram import Update, Bot
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram import Bot, Update
+from telegram.ext import CommandHandler, MessageHandler, filters, ContextTypes
 import asyncio
-import threading
-from datetime import datetime
+import json
 
 # Configuração de logging
 logging.basicConfig(
@@ -22,305 +21,214 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Configurações
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '8287801389:AAGwcmDKhBLh1bJvGHFvKDiRBpxgnw23Kik')
-BACKEND_URL = os.environ.get('BACKEND_URL', 'https://nexocrypto-backend.onrender.com')
-WEBHOOK_URL = os.environ.get('WEBHOOK_URL', 'https://nexocrypto-telegram-bot.onrender.com')
-PORT = int(os.environ.get('PORT', 10000))
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+BACKEND_URL = "https://nexocrypto-backend.onrender.com"
+WEBHOOK_URL = "https://nexocrypto-telegram-bot.onrender.com/webhook"
 
-# Flask app para webhook
+# Inicializar Flask
 app = Flask(__name__)
-bot_app = None
 
-class NexoCryptoBot:
-    def __init__(self):
-        self.bot = Bot(token=BOT_TOKEN)
-        self.application = None
-        
-    async def setup_webhook(self):
-        """Configura webhook do bot"""
-        try:
-            webhook_url = f"{WEBHOOK_URL}/webhook"
-            await self.bot.set_webhook(url=webhook_url)
-            logger.info(f"✅ Webhook configurado: {webhook_url}")
-            return True
-        except Exception as e:
-            logger.error(f"❌ Erro ao configurar webhook: {e}")
-            return False
-    
-    async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Comando /start"""
-        try:
-            user = update.effective_user
-            welcome_message = f"""🚀 **Bem-vindo ao NexoCrypto Bot!**
+# Inicializar Bot
+bot = Bot(token=BOT_TOKEN)
 
-Olá {user.first_name}! 👋
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Comando /start"""
+    try:
+        welcome_message = """
+🤖 **NexoCrypto Trading Bot**
 
-Este bot é usado para validar sua conta no sistema NexoCrypto e conectar seus grupos do Telegram para monitoramento de sinais de trading.
+Bem-vindo ao sistema de validação do NexoCrypto!
 
-📋 **Comandos disponíveis:**
-• `/start` - Mostra esta mensagem
-• `/validate [UUID]` - Valida sua conta com o UUID
+**Comandos disponíveis:**
+• `/start` - Iniciar o bot
+• `/validate [UUID]` - Validar seu UUID
 
-🔗 **Como usar:**
-1. Copie seu UUID do painel NexoCrypto
-2. Digite `/validate [seu-uuid]`
-3. Compartilhe seu contato quando solicitado
-4. Volte ao NexoCrypto e clique em "Verificar Validação"
+**Como usar:**
+1. Acesse https://nexocrypto.app
+2. Vá em Auto Trading
+3. Copie seu UUID
+4. Use: `/validate [seu-uuid]`
 
-💡 **Precisa de ajuda?**
-Acesse: https://nexocrypto.app
+🚀 **Pronto para começar!**
+        """
+        await update.message.reply_text(welcome_message, parse_mode='Markdown')
+        logger.info(f"Comando /start executado por {update.effective_user.username}")
+    except Exception as e:
+        logger.error(f"Erro no comando /start: {e}")
+        await update.message.reply_text("❌ Erro interno. Tente novamente.")
 
-Desenvolvido com ❤️ pela equipe NexoCrypto"""
-
-            await update.message.reply_text(welcome_message, parse_mode='Markdown')
-            
-        except Exception as e:
-            logger.error(f"Erro no comando start: {e}")
-            await update.message.reply_text("❌ Erro interno. Tente novamente.")
-
-    async def validate_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Comando /validate"""
-        try:
-            if not context.args:
-                await update.message.reply_text(
-                    "❌ **UUID não fornecido**\n\n"
-                    "Use: `/validate [seu-uuid]`\n\n"
-                    "Copie o UUID do painel NexoCrypto e cole aqui.",
-                    parse_mode='Markdown'
-                )
-                return
-
-            uuid_code = context.args[0].strip()
-            user = update.effective_user
-            
-            # Salva dados do usuário no backend
-            user_data = {
-                'user_uuid': uuid_code,  # Campo correto para o backend
-                'telegram_id': user.id,
-                'username': user.username or '',
-                'first_name': user.first_name or '',
-                'last_name': user.last_name or ''
-            }
-            
-            # Envia dados para o backend
-            try:
-                response = requests.post(
-                    f"{BACKEND_URL}/verify-userbot-code",
-                    json=user_data,
-                    timeout=10
-                )
-                
-                if response.status_code == 200:
-                    await update.message.reply_text(
-                        "✅ **Validação bem-sucedida!**\n\n"
-                        "📋 **PRÓXIMO PASSO IMPORTANTE:**\n"
-                        "🔄 Volte para o NexoCrypto e clique no botão \"Verificar Validação\" "
-                        "para completar a conexão e carregar seus grupos do Telegram!\n\n"
-                        "⚠️ Sem este passo, seus grupos não aparecerão na plataforma.",
-                        parse_mode='Markdown'
-                    )
-                else:
-                    await update.message.reply_text(
-                        "⚠️ **Erro na validação**\n\n"
-                        "Verifique se o UUID está correto e tente novamente.\n\n"
-                        f"Código de erro: {response.status_code}",
-                        parse_mode='Markdown'
-                    )
-                    
-            except requests.exceptions.RequestException as e:
-                logger.error(f"Erro ao conectar com backend: {e}")
-                await update.message.reply_text(
-                    "⚠️ **Erro de conexão**\n\n"
-                    "Não foi possível conectar com o servidor. "
-                    "Tente novamente em alguns minutos.",
-                    parse_mode='Markdown'
-                )
-                
-        except Exception as e:
-            logger.error(f"Erro no comando validate: {e}")
-            await update.message.reply_text("❌ Erro interno. Tente novamente.")
-
-    async def handle_contact(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Processa compartilhamento de contato"""
-        try:
-            contact = update.message.contact
-            user = update.effective_user
-            
-            if contact.user_id != user.id:
-                await update.message.reply_text(
-                    "❌ **Contato inválido**\n\n"
-                    "Por favor, compartilhe seu próprio contato.",
-                    parse_mode='Markdown'
-                )
-                return
-            
-            # Processa contato no backend
-            contact_data = {
-                'telegram_id': user.id,
-                'phone_number': contact.phone_number,
-                'first_name': contact.first_name or '',
-                'last_name': contact.last_name or ''
-            }
-            
-            try:
-                response = requests.post(
-                    f"{BACKEND_URL}/api/telegram/process-contact",
-                    json=contact_data,
-                    timeout=10
-                )
-                
-                if response.status_code == 200:
-                    await update.message.reply_text(
-                        "✅ **Contato recebido com sucesso!**\n\n"
-                        "📋 **PRÓXIMO PASSO IMPORTANTE:**\n"
-                        "🔄 Volte para o NexoCrypto e clique no botão \"Verificar Validação\" "
-                        "para completar a conexão e carregar seus grupos do Telegram!\n\n"
-                        "⚠️ Sem este passo, seus grupos não aparecerão na plataforma.",
-                        parse_mode='Markdown'
-                    )
-                else:
-                    await update.message.reply_text(
-                        "⚠️ **Erro ao processar contato**\n\n"
-                        "Tente novamente ou entre em contato com o suporte.",
-                        parse_mode='Markdown'
-                    )
-                    
-            except requests.exceptions.RequestException as e:
-                logger.error(f"Erro ao enviar contato para backend: {e}")
-                await update.message.reply_text(
-                    "⚠️ **Erro de conexão**\n\n"
-                    "Não foi possível processar seu contato. "
-                    "Tente novamente em alguns minutos.",
-                    parse_mode='Markdown'
-                )
-                
-        except Exception as e:
-            logger.error(f"Erro ao processar contato: {e}")
-            await update.message.reply_text("❌ Erro interno. Tente novamente.")
-
-    async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Processa mensagens gerais"""
-        try:
+async def validate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Comando /validate [UUID]"""
+    try:
+        if not context.args:
             await update.message.reply_text(
-                "👋 **Olá!**\n\n"
-                "Use `/start` para ver os comandos disponíveis.\n\n"
-                "Para validar sua conta, use:\n"
-                "`/validate [seu-uuid]`",
+                "❌ **Uso incorreto!**\n\n"
+                "Use: `/validate [seu-uuid]`\n\n"
+                "Exemplo: `/validate e5a81254-af08-484d-b959-e0217f5321c7`",
                 parse_mode='Markdown'
             )
-        except Exception as e:
-            logger.error(f"Erro ao processar mensagem: {e}")
+            return
 
-    async def setup_application(self):
-        """Configura a aplicação do bot"""
+        uuid_code = context.args[0].strip()
+        user = update.effective_user
+        
+        # Salva dados do usuário no backend
+        user_data = {
+            'user_uuid': uuid_code,  # Campo correto para o backend
+            'telegram_id': user.id,
+            'username': user.username or '',
+            'first_name': user.first_name or '',
+            'last_name': user.last_name or ''
+        }
+        
+        # Envia dados para o backend
         try:
-            self.application = Application.builder().token(BOT_TOKEN).build()
+            response = requests.post(
+                f"{BACKEND_URL}/verify-userbot-code",
+                json=user_data,
+                timeout=10
+            )
             
-            # Adiciona handlers
-            self.application.add_handler(CommandHandler("start", self.start_command))
-            self.application.add_handler(CommandHandler("validate", self.validate_command))
-            self.application.add_handler(MessageHandler(filters.CONTACT, self.handle_contact))
-            self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
+            if response.status_code == 200:
+                await update.message.reply_text(
+                    "✅ **Validação realizada com sucesso!**\n\n"
+                    "Seu Telegram foi vinculado ao sistema NexoCrypto.\n"
+                    "Agora você pode usar todas as funcionalidades do Auto Trading!",
+                    parse_mode='Markdown'
+                )
+                logger.info(f"Validação bem-sucedida para UUID: {uuid_code}")
+            else:
+                await update.message.reply_text(
+                    "❌ **UUID inválido ou expirado**\n\n"
+                    "Verifique se:\n"
+                    "• O UUID está correto\n"
+                    "• Você copiou do site oficial\n"
+                    "• Não passou muito tempo desde a geração",
+                    parse_mode='Markdown'
+                )
+                logger.warning(f"Validação falhou para UUID: {uuid_code} - Status: {response.status_code}")
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Erro na requisição para backend: {e}")
+            await update.message.reply_text(
+                "❌ **Erro de conexão**\n\n"
+                "Não foi possível conectar ao servidor.\n"
+                "Tente novamente em alguns minutos.",
+                parse_mode='Markdown'
+            )
             
-            # Inicializa aplicação
-            await self.application.initialize()
-            await self.application.start()
-            
-            logger.info("✅ Aplicação do bot configurada")
-            return True
-            
-        except Exception as e:
-            logger.error(f"❌ Erro ao configurar aplicação: {e}")
-            return False
+    except Exception as e:
+        logger.error(f"Erro no comando /validate: {e}")
+        await update.message.reply_text("❌ Erro interno. Tente novamente.")
 
-# Instância global do bot
-nexocrypto_bot = NexoCryptoBot()
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Manipula mensagens gerais"""
+    try:
+        await update.message.reply_text(
+            "🤖 **Comando não reconhecido**\n\n"
+            "Use `/start` para ver os comandos disponíveis.",
+            parse_mode='Markdown'
+        )
+    except Exception as e:
+        logger.error(f"Erro ao manipular mensagem: {e}")
 
+# Rotas Flask
 @app.route('/')
-def health_check():
-    """Health check endpoint"""
+def home():
     return jsonify({
         'status': 'online',
-        'service': 'NexoCrypto Telegram Bot',
-        'mode': 'webhook',
-        'timestamp': datetime.now().isoformat(),
-        'version': '2.0.0'
+        'bot': 'NexoCrypto Trading Bot',
+        'version': '1.0.0'
     })
-
-@app.route('/ping')
-def ping():
-    """Ping endpoint"""
-    return 'pong'
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    """Endpoint do webhook"""
+    """Endpoint do webhook para receber updates do Telegram"""
     try:
-        if not nexocrypto_bot.application:
-            return jsonify({'error': 'Bot não inicializado'}), 500
+        json_data = request.get_json()
+        
+        if not json_data:
+            return jsonify({'error': 'No JSON data'}), 400
             
-        # Processa update do Telegram
-        update_data = request.get_json()
-        if update_data:
-            update = Update.de_json(update_data, nexocrypto_bot.bot)
-            
-            # Processa update de forma assíncrona
-            asyncio.create_task(nexocrypto_bot.application.process_update(update))
-            
+        # Processar update do Telegram
+        update = Update.de_json(json_data, bot)
+        
+        # Executar handlers de forma assíncrona
+        asyncio.create_task(process_update(update))
+        
         return jsonify({'status': 'ok'})
         
     except Exception as e:
         logger.error(f"Erro no webhook: {e}")
         return jsonify({'error': str(e)}), 500
 
-async def setup_bot():
-    """Configura o bot"""
+async def process_update(update: Update):
+    """Processa updates do Telegram"""
     try:
-        logger.info("🚀 Iniciando NexoCrypto Bot (Webhook Mode)...")
-        
-        # Configura aplicação
-        if not await nexocrypto_bot.setup_application():
-            return False
-            
-        # Configura webhook
-        if not await nexocrypto_bot.setup_webhook():
-            return False
-            
-        logger.info("✅ Bot configurado com sucesso!")
-        return True
-        
+        if update.message:
+            if update.message.text:
+                text = update.message.text.strip()
+                
+                if text.startswith('/start'):
+                    await start_command(update, None)
+                elif text.startswith('/validate'):
+                    # Extrair argumentos do comando
+                    parts = text.split()
+                    if len(parts) > 1:
+                        # Simular context.args
+                        class MockContext:
+                            def __init__(self, args):
+                                self.args = args
+                        
+                        context = MockContext(parts[1:])
+                        await validate_command(update, context)
+                    else:
+                        await validate_command(update, MockContext([]))
+                else:
+                    await handle_message(update, None)
+                    
     except Exception as e:
-        logger.error(f"❌ Erro ao configurar bot: {e}")
+        logger.error(f"Erro ao processar update: {e}")
+
+async def setup_webhook():
+    """Configura o webhook do bot"""
+    try:
+        # Configurar webhook
+        await bot.set_webhook(url=WEBHOOK_URL)
+        logger.info(f"✅ Webhook configurado: {WEBHOOK_URL}")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Erro ao configurar webhook: {e}")
         return False
 
-def run_bot_setup():
-    """Executa setup do bot em thread separada"""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(setup_bot())
-
-if __name__ == '__main__':
+def main():
+    """Função principal"""
     try:
-        # Configura bot em thread separada
-        bot_thread = threading.Thread(target=run_bot_setup)
-        bot_thread.daemon = True
-        bot_thread.start()
+        logger.info("🚀 Iniciando NexoCrypto Bot (Versão Simplificada)...")
         
-        # Aguarda um pouco para o bot configurar
-        import time
-        time.sleep(3)
+        if not BOT_TOKEN:
+            logger.error("❌ BOT_TOKEN não encontrado!")
+            return
+            
+        # Configurar webhook de forma assíncrona
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         
-        logger.info(f"🌐 Iniciando servidor Flask na porta {PORT}")
+        webhook_success = loop.run_until_complete(setup_webhook())
         
-        # Inicia servidor Flask
-        app.run(
-            host='0.0.0.0',
-            port=PORT,
-            debug=False,
-            use_reloader=False
-        )
+        if not webhook_success:
+            logger.error("❌ Falha ao configurar webhook!")
+            return
+            
+        logger.info("🌐 Iniciando servidor Flask na porta 10000")
+        
+        # Iniciar servidor Flask
+        port = int(os.environ.get('PORT', 10000))
+        app.run(host='0.0.0.0', port=port, debug=False)
         
     except Exception as e:
         logger.error(f"❌ Erro fatal: {e}")
-        exit(1)
+
+if __name__ == '__main__':
+    main()
 
